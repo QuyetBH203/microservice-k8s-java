@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: player-deployment
+  labels:
+    app: player-service
+spec:
+  replicas: 1 # Start with one instance
+  selector:
+    matchLabels:
+      app: player-service
+  template:
+    metadata:
+      labels:
+        app: player-service
+    spec:
+      containers:
+        - name: player-service
+          # Replace 'your-dockerhub-username/player-service:latest' with your actual image name
+          # Or just 'player-service:latest' if building directly into Minikube's Docker daemon
+          image: player-service:latest
+          imagePullPolicy: IfNotPresent # Or 'Always' if pulling from a remote registry
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080 # Port the application listens on inside the container (Updated)
+          env:
+            # Environment variables to connect to MySQL (Updated Database)
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/player_service?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC # Connect to player-service_db (Corrected)
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root # Use root user (Updated)
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD # Use root password from secret (Updated)
+            # Add other necessary environment variables here
+            # Example: Eureka server URL if using service discovery
+            # - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+            #   value: http://eureka-service:8761/eureka/
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: player-service # DNS name for other services to reach this one
+  labels:
+    app: player-service
+spec:
+  selector:
+    app: player-service # Selects pods managed by the player-deployment
+  ports:
+    - protocol: TCP
+      port: 8080 # Port the service listens on (Updated)
+      targetPort: 8080 # Port the container listens on (Updated)
+  type: ClusterIP # Only accessible within the cluster

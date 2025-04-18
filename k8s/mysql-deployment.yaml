@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+data:
+  # Use base64 encoding for passwords. Replace with your actual encoded passwords.
+  # echo -n 'your_root_password' | base64
+  MYSQL_ROOT_PASSWORD: cm9vdF9wYXNzd29yZA== # Replace with base64 encoded root password (default: root_password)
+  # echo -n 'your_user_password' | base64
+  MYSQL_PASSWORD: Y2hlc3NfcGFzc3dvcmQ= # Replace with base64 encoded user password (default: chess_password)
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce # This volume can be mounted as read-write by a single node
+  resources:
+    requests:
+      storage: 1Gi # Request 1 Gigabyte of storage
+  # storageClassName: standard # Uncomment if you need to specify a storage class in Minikube/your cluster
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0 # Using MySQL version 8.0
+          ports:
+            - containerPort: 3306
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: session-service_db,player-service_db,participant-service_db # Names of the databases to be created (Updated)
+            - name: MYSQL_USER
+              value: chess_user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql # Mount the persistent volume at the MySQL data directory
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc # Use the PVC defined above
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service # This is the DNS name services will use to connect to MySQL
+spec:
+  selector:
+    app: mysql # Selects pods with the label 'app: mysql'
+  ports:
+    - protocol: TCP
+      port: 3306 # Port the service listens on
+      targetPort: 3306 # Port the container listens on
+  type: ClusterIP # Exposes the service on a cluster-internal IP

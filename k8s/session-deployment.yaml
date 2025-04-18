@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-deployment
+  labels:
+    app: session-service
+spec:
+  replicas: 1 # Start with one instance
+  selector:
+    matchLabels:
+      app: session-service
+  template:
+    metadata:
+      labels:
+        app: session-service
+    spec:
+      containers:
+        - name: session-service
+          # Replace 'your-dockerhub-username/session-service:latest' with your actual image name
+          # Or just 'session-service:latest' if building directly into Minikube's Docker daemon
+          image: session-service:latest
+          imagePullPolicy: IfNotPresent # Or 'Always' if pulling from a remote registry
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080 # Port the application listens on inside the container
+          env:
+            # Environment variables to connect to MySQL (Updated Database)
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/session_service?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC # Connect to session-service_db
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root # Use root user (Updated)
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD # Use root password from secret (Updated)
+            # Add other necessary environment variables here
+            # Example: Eureka server URL if using service discovery
+            # - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+            #   value: http://eureka-service:8761/eureka/
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: session-service # DNS name for other services to reach this one
+  labels:
+    app: session-service
+spec:
+  selector:
+    app: session-service # Selects pods managed by the session-deployment
+  ports:
+    - protocol: TCP
+      port: 8080 # Port the service listens on
+      targetPort: 8080 # Port the container listens on
+  type: ClusterIP # Only accessible within the cluster

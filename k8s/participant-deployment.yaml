@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: participant-deployment
+  labels:
+    app: participant-service
+spec:
+  replicas: 1 # Start with one instance
+  selector:
+    matchLabels:
+      app: participant-service
+  template:
+    metadata:
+      labels:
+        app: participant-service
+    spec:
+      containers:
+        - name: participant-service
+          # Replace 'your-dockerhub-username/participant-service:latest' with your actual image name
+          # Or just 'participant-service:latest' if building directly into Minikube's Docker daemon
+          image: participant-service:latest
+          imagePullPolicy: IfNotPresent # Or 'Always' if pulling from a remote registry
+          ports:
+            - containerPort: 8082 # Port the application listens on inside the container (Updated)
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            # Environment variables to connect to MySQL (Updated Database)
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/participant_service?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC # Connect to participant-service_db
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root # Use root user (Updated)
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD # Use root password from secret (Updated)
+            # Environment variables for service clients (Updated URLs)
+            - name: PLAYER_SERVICE_URL
+              value: http://player-service:8081 # Player service runs on port 8081
+            - name: SESSION_SERVICE_URL
+              value: http://session-service:8080 # Session service runs on port 8080
+            # Add other necessary environment variables here
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: participant-service # DNS name for other services to reach this one
+  labels:
+    app: participant-service
+spec:
+  selector:
+    app: participant-service # Selects pods managed by the participant-deployment
+  ports:
+    - protocol: TCP
+      port: 8082 # Port the service listens on (Updated)
+      targetPort: 8082 # Port the container listens on (Updated)
+  type: ClusterIP # Only accessible within the cluster

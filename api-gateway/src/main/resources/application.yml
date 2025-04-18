@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: api-gateway
+server:
+  port: 9000
+
+
+player:
+  service:
+    url: http://player-service:8080 # Use Kubernetes Service name and port (Updated)
+
+session:
+    service:
+        url: http://session-service:8081 # Use Kubernetes Service name and port (Updated)
+
+
+participant:
+    service:
+        url: http://participant-service:8082 # Use Kubernetes Service name and port (Updated)
