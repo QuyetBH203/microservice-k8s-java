@@ -4,6 +4,17 @@ This project implements a chess management system using a microservices architec
 
 ## Project Structure
 
+```
+deploy-k8s/
+├── api-gateway/      # Spring Cloud Gateway service
+├── k8s/              # Kubernetes deployment files (.yaml)
+├── participant/      # Participant microservice
+├── player/           # Player microservice
+├── session/          # Session microservice
+├── deploy.sh         # Deployment script
+└── README.md         # This file
+```
+
 The project is organized into the following main components:
 
 -   **`api-gateway/`**: Contains the Spring Cloud Gateway service, acting as the single entry point for all incoming requests and routing them to the appropriate microservice.
